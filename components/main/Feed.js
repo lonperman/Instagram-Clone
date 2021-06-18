@@ -6,71 +6,77 @@ import { connect } from 'react-redux';
 
 function Feed(props){
     
-    const [posts, setPosts] = userState([]);
+    const [posts, setPosts] = useState([]);
 
     useEffect(() => {
+        let posts = [];
         if(props.usersFollowingLoaded == props.following.length && props.following.length !== 0){
-            
-        }
-    }, [props.route.params.uid, props.following])
+            props.feed.sort(function(x, y) {
+                return x.creation - y.creation;
+            })
 
-    const onFollow = () => {
+            setPosts(props.feed);
+        }
+    }, [props.usersFollowingLoaded, props.feed])
+
+    const onLikePress = (userId, postId) => {
         firebase.firestore()
-            .collection("following")
+            .collection("posts")
+            .doc(userId)
+            .collection("userPosts")
+            .doc(postId)
+            .collection("likes")
             .doc(firebase.auth().currentUser.uid)
-            collection("userFollowing")
-            .doc(props.route.params.uid)
             .set({})
     }
 
-    const onUnFollow = () => {
+       const onDislikePress = (userId, postId) => {
         firebase.firestore()
-            .collection("following")
+            .collection("posts")
+            .doc(userId)
+            .collection("userPosts")
+            .doc(postId)
+            .collection("likes")
             .doc(firebase.auth().currentUser.uid)
-            collection("userFollowing")
-            .doc(props.route.params.uid)
             .delete()
     }
 
-    if(user === null){
-        return <View />
-    }
+
 
     return(
         <View styles={styles.container}>
-            <View styles={styles.containerInfo}>
-                <Text>{user.name}</Text>
-                <Text>{user.email}</Text>
-
-                {props.route.params.uid !== firebase.auth().currentUser.uid ? (
-                    <View>
-                        {following ? (
-                            <Button
-                                title="Following"
-                                onPress={() => onUnfollow()}
-                            />
-                        ):
-                        (
-                            <Button 
-                                title="Follow"
-                                onPress={() => onFollow()}
-                            />
-                        )}
-                    </View>
-                ) : null}
-            </View>
-
             <View style={styles.containerGallery}>
                 <FlatList 
-                    numColumns={3}
+                    numColumns={1}
                     horizontal={false}
-                    data={userPosts}
+                    data={posts}
                     renderItem={({item}) => (
                         <View style={styles.containerImage}>
+                            <Text style={styles.container}>{item.user.name}</Text>
                             <Image
                                 style={styles.image} 
                                 source={{uri: item.downloadURL}}
                             />
+                            {item.currentUserLike ? 
+                                (
+                                    <Button
+                                        title="Dislike"
+                                        onPress={() => onDislikePress(item.user.uid, item.id)}
+                                    /> 
+                                )
+                                :
+                                (
+                                    <Button
+                                        title="Like"
+                                        onPress={() => onLikePress(item.user.uid, item.id)}
+                                    /> 
+                                )
+                            }
+                            <Text
+                                onPress={() => props.navigation.navigate('Comment',
+                                    { postId: item.id, uid: item.user.uid }
+                                )}
+                            >View Comments...</Text>
                         </View>
                     )}
                 />
@@ -100,8 +106,9 @@ const styles = StyleSheet.create({
 
 const mapStateToProps = (store) => ({
     currentUser: store.userState.currentUser,
-    posts: store.userState.posts,
-    following: store.userState.following
+    following: store.userState.following,
+    feed: store.usersState.feed,
+    usersFollowingLoaded: store.usersState.usersFollowingLoaded
 })
 
-export default connect(mapStateToProps, null)(Profile);
+export default connect(mapStateToProps, null)(Feed);
